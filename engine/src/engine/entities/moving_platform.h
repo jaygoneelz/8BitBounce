@@ -10,6 +10,7 @@ public:
                    engine::ref<engine::material> material,
                    glm::vec3 scale);
 
+    void reset();
     void update(const engine::timestep& ts);
     void render(const engine::ref<engine::shader>& shader) const;
 

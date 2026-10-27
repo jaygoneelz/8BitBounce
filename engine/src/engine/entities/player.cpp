@@ -18,18 +18,16 @@ Player::Player(engine::ref<engine::game_object> object,
 
 void Player::on_update(const engine::timestep& ts, const glm::vec3& forward, const glm::vec3& right)
 {
+    m_damage_cooldown = glm::max(0.f, m_damage_cooldown - float(ts));
     handle_input(forward, right);
     handle_jump();
 
     // Example fall damage
     if (m_object->position().y < -10.f) {
         take_damage(25);
-        m_object->set_position(glm::vec3(0.f, 10.f, 0.f));
+        m_object->set_position(glm::vec3(8.f, 2.f, 0.f));
+        m_object->set_velocity(glm::vec3(0.f));
     }
-
-    // Debug key to test damage/heal
-    if (engine::input::key_pressed(engine::key_codes::KEY_K)) take_damage(10);
-    if (engine::input::key_pressed(engine::key_codes::KEY_H)) heal(10);
 
     if (m_jump_powerup_timer) {
         m_jump_powerup_timer -= ts;
@@ -54,8 +52,15 @@ void Player::handle_input(const glm::vec3& forward, const glm::vec3& right)
         direction -= right;
 
     if (glm::length(direction) > 0.01f)
-        direction = glm::normalize(direction) * 5.0f;
+        direction = glm::normalize(direction) * 22.0f;
 
+    // Ground drag and a speed cap preserve acceleration without unbounded skating.
+    glm::vec3 velocity = m_object->velocity();
+    glm::vec2 horizontal(velocity.x, velocity.z);
+    float speed = glm::length(horizontal);
+    if (speed > 6.f) horizontal *= 6.f / speed;
+    m_object->set_velocity({horizontal.x, velocity.y, horizontal.y});
+    if (glm::length(direction) < .01f) direction = glm::vec3(-velocity.x * 8.f,0.f,-velocity.z * 8.f);
     m_object->set_acceleration(direction);
 
     if (glm::length(direction) > 0.1f)
@@ -87,13 +92,13 @@ void Player::handle_jump()
 bool Player::check_collision(engine::ref<engine::game_object> obj)
 {
     float distance = glm::distance(m_object->position(), obj->position());
-    return distance < 0.3f;
+    return distance < 1.0f;
 }
 
 bool Player::is_grounded() const
 {
     glm::vec3 pos = m_object->position();
-    btVector3 from(pos.x, pos.y, pos.z);
+    btVector3 from(pos.x, pos.y - .51f, pos.z);
     btVector3 to(pos.x, pos.y - m_ground_check_distance, pos.z);
 
     btCollisionWorld::ClosestRayResultCallback ray_callback(from, to);
@@ -104,6 +109,8 @@ bool Player::is_grounded() const
 
 void Player::take_damage(int amount)
 {
+    if (m_damage_cooldown > 0.f || amount <= 0) return;
+    m_damage_cooldown = .9f;
     m_health -= amount;
     if (m_health < 0)
         m_health = 0;
@@ -126,4 +133,15 @@ void Player::heal(int amount)
             m_audio->play_spatialised_sound("heal", m_camera->position(), m_object->position());
         else
             m_audio->play_spatialised_sound("heal", m_object->position(), m_object->position());
+}
+
+void Player::reset() {
+    m_health = m_max_health;
+    m_jump_powerup_timer = 0.f;
+    m_jump_multiplier = 1.f;
+    m_damage_cooldown = 0.f;
+    m_jump_key_held = true;
+    m_object->set_position({8.f, 2.f, 0.f});
+    m_object->set_velocity(glm::vec3(0.f));
+    m_object->set_acceleration(glm::vec3(0.f));
 }

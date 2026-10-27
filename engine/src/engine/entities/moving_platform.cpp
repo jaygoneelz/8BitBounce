@@ -16,7 +16,6 @@ MovingPlatform::MovingPlatform(glm::vec3 start,
 void MovingPlatform::update(const engine::timestep& ts)
 {
     glm::vec3 current_position = m_platform->object()->position();
-    m_platform_delta = current_position - m_last_position;
     m_last_position = current_position;
 
     float delta = float(ts) * m_speed;
@@ -35,6 +34,7 @@ void MovingPlatform::update(const engine::timestep& ts)
     }
 
     current_position = glm::mix(m_start, m_end, m_progress);
+    m_platform_delta = current_position - m_last_position;
     m_platform->object()->set_position(current_position);
 }
 
@@ -43,3 +43,9 @@ void MovingPlatform::render(const engine::ref<engine::shader>& shader) const
     m_platform->render(shader);
 }
 
+
+void MovingPlatform::reset() {
+    m_progress = 0.f; m_forward = true;
+    m_last_position = m_start; m_platform_delta = glm::vec3(0.f);
+    m_platform->object()->set_position(m_start);
+}

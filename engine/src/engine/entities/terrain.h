@@ -15,6 +15,7 @@ namespace engine
 		~terrain();
 
 		/// \brief Getter methods
+        ref<engine::mesh> mesh() const { return m_tiled_mesh; }
 		float width() const { return m_width; }
 		float length() const { return m_length; }
 		float depth() const { return m_depth; }
@@ -24,6 +25,7 @@ namespace engine
 		/// \brief Fields
 		// terrain's width
 		float m_width;
+        ref<engine::mesh> m_tiled_mesh;
 		// terrain's depth
 		float m_depth;
 		// terrain's length

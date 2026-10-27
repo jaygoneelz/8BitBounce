@@ -45,7 +45,7 @@ void MapGenerator::generate_spiral_map(int num_layers, float radius, float heigh
         // Every 3rd layer gets a horizontal moving platform
         if (i > 0 && i % 3 == 0)
         {
-            glm::vec3 start = pos + glm::vec3(0.f, 1.5f, 0.f);
+            glm::vec3 start = pos + glm::vec3(cos(angle)*6.f, 1.5f, sin(angle)*6.f);
             glm::vec3 end = start + glm::vec3(2.0f, 0.f, 0.f);
             add_moving_platform(start, end, 1.0f, scale * 0.8f);
         }
@@ -53,7 +53,7 @@ void MapGenerator::generate_spiral_map(int num_layers, float radius, float heigh
         // Every 4th layer gets a vertical moving platform
         if (i > 0 && i % 4 == 0)
         {
-            glm::vec3 start = pos + glm::vec3(1.5f, 0.f, 0.f);
+            glm::vec3 start = pos + glm::vec3(cos(angle)*6.f, 0.f, sin(angle)*6.f);
             glm::vec3 end = start + glm::vec3(0.f, 3.0f, 0.f);
             add_moving_platform(start, end, 0.5f, scale * 0.7f);
         }

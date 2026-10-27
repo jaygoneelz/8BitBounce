@@ -256,9 +256,11 @@ void engine::bullet_manager::dynamics_world_update(const std::vector<engine::ref
 				btVector3 pos = to_bt_vector3(game_object_i->position());
 				trans.setOrigin(pos);
 				trans.setRotation(btQuaternion(to_bt_vector3(game_object_i->rotation_axis()), btScalar(game_object_i->rotation_amount())));
-				btDefaultMotionState* myMotionState = new btDefaultMotionState(trans);
-
-				physical_object_i->get_body()->setMotionState(myMotionState);
+				// Reuse the owned motion state; teleporting must update the body too.
+                auto body = physical_object_i->get_body();
+                body->setWorldTransform(trans);
+                if (body->getMotionState()) body->getMotionState()->setWorldTransform(trans);
+                m_dynamics_world->updateSingleAabb(body);
 				physical_object_i->get_body()->setLinearVelocity(to_bt_vector3(game_object_i->velocity()));
 				physical_object_i->get_body()->setAngularVelocity(to_bt_vector3(game_object_i->angular_velocity()));
 

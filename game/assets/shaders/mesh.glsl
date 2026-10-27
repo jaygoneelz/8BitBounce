@@ -142,13 +142,14 @@ uniform Material material;
 uniform bool skybox_rendering = false;
 uniform float transparency;
 uniform bool lighting_on = true;
+uniform float u_opacity = 1.0;
 uniform bool fog_on = false;
 uniform vec3 fog_colour;
 uniform int fog_factor_type;
 in vec4 v_pos;
 float rho = 0.15f;
-float fog_start = 3.0f;
-float fog_end = 15.0f;
+float fog_start = 45.0f;
+float fog_end = 160.0f;
 
 uniform bool colouring_on = false;
 uniform vec3 in_colour = vec3(1,0,0);
@@ -264,9 +265,9 @@ void main()
         }
 	}
 
-	if(fog_on)
+	if(fog_on && !skybox_rendering)
 	{
-		float d = length(v_pos.xyz);
+		float d = distance(In.WorldPos, gEyeWorldPos);
 		float w;
 		if(fog_factor_type == 0) {
 			if (d < fog_end)
@@ -278,7 +279,7 @@ void main()
 		} else {
 			w = exp(-(rho*d)*(rho*d));
 		}
-		result.rgb = mix(fog_colour, result.rgb, w);
+		result.rgb = mix(fog_colour, result.rgb, clamp(w, 0.0, 1.0));
 	}
 
 	if(colouring_on)
@@ -286,5 +287,6 @@ void main()
 		result = result * vec4(in_colour, transparency);
 	}
 	
+    result.a *= u_opacity;
     o_color = result;
 }

@@ -33,7 +33,7 @@ void engine::application::run()
 	gameLoopTimer.start();
 	while (s_running)
 	{
-		timestep time_step = (float)gameLoopTimer.elapsed();
+		timestep time_step = std::getenv("BOUNCE_SMOKE") ? 1.f/60.f : glm::min(.05f, (float)gameLoopTimer.elapsed());
 		gameLoopTimer.reset();
 		for (auto* layer : m_layers_stack)
 		{

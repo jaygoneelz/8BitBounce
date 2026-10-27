@@ -1,4 +1,7 @@
 #include "example_layer.h"
+#include <fstream>
+#include <cstdlib>
+#include <gl/GL.h>
 #include "platform/opengl/gl_shader.h"
 #include <random>
 #include <glm/gtc/matrix_transform.hpp> // glm::translate, glm::rotate, glm::scale, glm::perspective
@@ -160,7 +163,7 @@ example_layer::example_layer()
 	tree_props.textures = tree_model->textures();
 	float tree_scale = 3.0f / glm::max(tree_model->size().x, glm::max(tree_model->size().y, tree_model->size().z));
 	tree_props.position = { 4.f, 0.5f, -5.f };
-	tree_props.bounding_shape = tree_model->size() / 2.f * tree_scale;
+	tree_props.bounding_shape = tree_model->size() / 2.f;
 	tree_props.scale = glm::vec3(tree_scale);
 	m_tree = engine::game_object::create(tree_props);
 
@@ -180,6 +183,7 @@ example_layer::example_layer()
 	player_props.mass = 1.0f;
 	player_props.meshes = { player_shape->mesh() };
 	player_props.bounding_shape = glm::vec3(0.5f);
+    player_props.textures = {engine::texture_2d::create("assets/textures/bounce-checker.png", false)};
 	player_props.restitution = 0.2f;
 	player_props.friction = 1.3f;
 	player_props.scale = glm::vec3(1.f);
@@ -254,7 +258,30 @@ void example_layer::update_third_person_camera(float pitch, float yaw)
 	glm::vec3 cam_offset = -cam_direction * 6.0f + glm::vec3(0.f, 2.f, 0.f); // behind + above
 	glm::vec3 cam_pos = player_pos + cam_offset;
 
-	m_3d_camera.set_view_matrix(cam_pos, player_pos);
+    glm::vec3 target = player_pos + glm::vec3(0.f,.7f,0.f);
+    cam_pos.y = glm::max(cam_pos.y, 1.1f);
+    glm::vec3 ray = cam_pos - target;
+    float closest = 1.f;
+    for (const auto& object : m_game_objects) {
+        if (!object->is_static() || object == m_terrain) continue;
+        glm::vec3 half = object->bounding_shape() * object->scale() + glm::vec3(.25f);
+        glm::vec3 low = object->position() - half, high = object->position() + half;
+        float near_t = 0.f, far_t = 1.f;
+        bool hit = true;
+        for (int axis = 0; axis < 3; ++axis) {
+            if (std::abs(ray[axis]) < .0001f) {
+                if (target[axis] < low[axis] || target[axis] > high[axis]) hit = false;
+            } else {
+                float a = (low[axis]-target[axis])/ray[axis], b = (high[axis]-target[axis])/ray[axis];
+                near_t = glm::max(near_t, glm::min(a,b));
+                far_t = glm::min(far_t, glm::max(a,b));
+            }
+        }
+        if (hit && near_t <= far_t && near_t > .03f) closest = glm::min(closest, near_t);
+    }
+    cam_pos = target + ray * glm::max(.05f, closest - .035f);
+    cam_pos.y = glm::max(cam_pos.y, 1.1f);
+    m_3d_camera.set_view_matrix(cam_pos, target);
 }
 
 void example_layer::sync_player_with_platforms()
@@ -312,7 +339,16 @@ void example_layer::add_boundary_walls(float arena_width, float arena_depth, flo
 
 void example_layer::on_update(const engine::timestep& time_step)
 {
-	if (m_game_manager->current_state() == GameState::Intro) return;
+	if (std::getenv("BOUNCE_SMOKE") && m_game_manager->current_state() == GameState::Intro) m_game_manager->start_game();
+    if (m_game_manager->current_state() != GameState::Playing) { m_run_started = false; return; }
+    if (!m_run_started) {
+        m_run_started = true;
+        m_survival_time = 0.f;
+        m_powerup_hud.clear();
+        for (auto& pickup : m_powerups) pickup.reset();
+        for (auto& enemy : m_enemies) enemy->reset();
+        for (auto& platform : m_moving_platforms) platform->reset();
+    }
 
 	// local vars
 	static float pitch = 15.0f;           
@@ -420,7 +456,7 @@ void example_layer::on_update(const engine::timestep& time_step)
 
 	m_game_end_volume->on_update(time_step);
 	if (m_game_end_volume->check_overlap(m_player->position())) {
-		m_game_manager->trigger_game_over();
+		m_game_manager->trigger_game_over(true);
 	}
 
 	m_environment.update(time_step);
@@ -436,8 +472,8 @@ void example_layer::on_update(const engine::timestep& time_step)
 	handle_audio();
 
 	m_survival_time += (float)time_step.seconds();
-	if (m_survival_time >= 301)
-		m_game_manager->trigger_game_over();
+	if (m_survival_time >= 300)
+		m_game_manager->trigger_game_over(true);
 	m_game_manager->update(time_step);
 } 
 
@@ -448,7 +484,21 @@ void example_layer::on_render()
 
 	// Set up  shader. (renders textures and materials)
 	const auto mesh_shader = engine::renderer::shaders_library()->get("mesh");
-	m_light.submit(mesh_shader,1);
+    mesh_shader->bind();
+    auto gl_shader = std::dynamic_pointer_cast<engine::gl_shader>(mesh_shader);
+    // Three effective scene lights: sun, moving bounce orb, summit beacon.
+    m_light.Position = m_ball->position();
+    m_light.Color = {.25f,.65f,1.f};
+    m_light.AmbientIntensity = .08f; m_light.DiffuseIntensity = 2.f;
+    m_light.Attenuation.Constant = 1.f; m_light.Attenuation.Linear = .08f; m_light.Attenuation.Exp = .025f;
+    m_goal_light = m_light;
+    m_goal_light.Position = m_game_end_volume->object()->position() + glm::vec3(0.f,2.f,0.f);
+    m_goal_light.Color = {.65f,1.f,.3f};
+    gl_shader->set_uniform("gNumPointLights", 2);
+    m_light.submit(mesh_shader,0); m_goal_light.submit(mesh_shader,1);
+    gl_shader->set_uniform("fog_on", true);
+    gl_shader->set_uniform("fog_colour", glm::vec3(.2f,.3f,.3f));
+    gl_shader->set_uniform("fog_factor_type", 0);
 
 	const auto text_shader = engine::renderer::shaders_library()->get("text_2D");
 	if (m_game_manager->current_state() != GameState::Playing) {
@@ -462,7 +512,7 @@ void example_layer::on_render()
 
 	if (m_show_bounding_boxes) {
 		for (auto& object : m_game_objects) {
-			glm::vec3 bounds = object->bounding_shape();
+			glm::vec3 bounds = object->bounding_shape() * object->scale();
 			glm::vec3 center = object->position();
 
 			glm::mat4 transform = glm::translate(glm::mat4(1.f), center) *
@@ -538,8 +588,21 @@ void example_layer::on_render()
 		m_text_manager->render_text(text_shader, hud_item_text.str(), 10.f, (float)engine::application::window().height() - 75.f - 25.f * i, 0.5f, glm::vec4(1.f, 1.0f, 1.f, 1.f));
 
 	}
-	m_game_manager->render();
-
+    m_game_manager->render();
+    if (const char* output = std::getenv("BOUNCE_SMOKE")) {
+        static int frames = 0;
+        if (++frames == 120) {
+            const int width = engine::application::window().width(), height = engine::application::window().height();
+            std::vector<unsigned char> pixels(width*height*3);
+            glPixelStorei(GL_PACK_ALIGNMENT,1);
+            glReadPixels(0,0,width,height,GL_RGB,GL_UNSIGNED_BYTE,pixels.data());
+            std::ofstream file(output,std::ios::binary);
+            file << "P6\n" << width << " " << height << "\n255\n";
+            for (int row=height-1;row>=0;--row) file.write(reinterpret_cast<char*>(pixels.data()+row*width*3),width*3);
+            LOG_CORE_INFO("BOUNCE_SMOKE completed: 120 gameplay frames, HP {}, time {}",m_player_controller->health(),m_survival_time);
+            engine::application::exit();
+        }
+    }
 	
 } 
 
@@ -562,13 +625,20 @@ void example_layer::handle_audio()
 	if (m_prev_sphere_y_vel < 0.1f && m_ball->velocity().y > 0.1f && m_ball->velocity().y < 0.2f) {
 		m_audio_manager->play_spatialised_sound("bounce", m_3d_camera.position(), glm::vec3(m_ball->position().x, 0.f, m_ball->position().z));
 	}
-	m_prev_sphere_y_vel = m_game_objects.at(1)->velocity().y;
+	m_prev_sphere_y_vel = m_ball->velocity().y;
 }
 
 void example_layer::spawn_powerups()
 {
 	m_powerups.emplace_back("assets/models/static/red_potion.obj", glm::vec3(3.f, 1.f, 2.f), PowerUpType::Heal, m_audio_manager, &m_3d_camera);
 	m_powerups.emplace_back("assets/models/static/red_potion.obj", glm::vec3(6.f, 1.f, -4.f), PowerUpType::Bounce, m_audio_manager, &m_3d_camera);
+    // Reward climbing with alternating pickup opportunities, not only ground-level items.
+    for (int i = 1; i < 12; ++i) if (i % 2 == 1 || i % 3 == 0) {
+        float angle = i * glm::radians(45.f);
+        m_powerups.emplace_back("assets/models/static/red_potion.obj",
+            glm::vec3(8.f*cos(angle), i*1.5f+1.f, 8.f*sin(angle)),
+            i%3 == 0 ? PowerUpType::Heal : PowerUpType::Bounce, m_audio_manager, &m_3d_camera);
+    }
 }
 
 void example_layer::spawn_enemies(float radius_from_center, int count, std::vector<std::shared_ptr<Enemy>>& enemies)

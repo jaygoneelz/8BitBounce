@@ -33,7 +33,7 @@ public:
 
     void show_intro();
     void start_game();
-    void trigger_game_over();
+    void trigger_game_over(bool won = false);
     void restart_game();
 
     GameState current_state() const;
@@ -54,6 +54,8 @@ private:
     engine::ref<Player> m_player;
 
     float m_survival_timer = 0.0f;
+    float m_combo_timer = 0.f;
+    bool m_won = false;
     std::vector<PowerUpType> m_collected_powerups;
     engine::ref<engine::text_manager> m_text_manager;
 };

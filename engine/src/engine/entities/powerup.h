@@ -20,6 +20,7 @@ public:
 
     bool is_collected() const { return m_collected; }
     void collect();
+    void reset() { m_collected = false; m_animation_time = 0.f; }
     PowerUpType type() const { return m_type; }
 
     engine::ref<engine::game_object> object() const { return m_object; }
@@ -37,5 +38,6 @@ private:
 
     PowerUpType m_type;
     float m_rotation_angle = 0.0f;
+    float m_animation_time = 0.f;
     bool m_collected = false;
 };

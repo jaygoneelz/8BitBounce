@@ -14,7 +14,6 @@ void engine::renderer::init()
 	renderer::shaders_library()->load("assets/shaders/mesh.glsl");
 	renderer::shaders_library()->load("assets/shaders/text_2D.glsl");
 	renderer::shaders_library()->load("assets/shaders/bounding_box.glsl");
-	renderer::shaders_library()->load("assets/shaders/particle_shader.glsl");
 }
 
 void engine::renderer::resize(uint32_t x, uint32_t y, uint32_t width, uint32_t height)

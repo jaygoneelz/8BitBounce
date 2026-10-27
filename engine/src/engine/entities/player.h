@@ -13,6 +13,7 @@ public:
     void handle_input(const glm::vec3& forward, const glm::vec3& right);
     void handle_jump();
 
+    void reset();
     void take_damage(int amount);
     void heal(int amount);
     int health() const { return m_health; }
@@ -34,7 +35,8 @@ private:
     engine::perspective_camera* m_camera = nullptr;
 
     bool m_jump_key_held = false;
-    float m_jump_force = 5.0f;
+    float m_jump_force = 8.0f;
+    float m_damage_cooldown = 0.f;
     float m_ground_check_distance = 0.6f;
 
     float m_jump_powerup_timer = 0.f;

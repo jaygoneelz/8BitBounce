@@ -21,7 +21,7 @@ engine::cone::cone(float radius, float height, uint32_t segments) {
 
         glm::vec3 base_vertex = { x, -height * 0.5f, z };
 
-        vertices.push_back({ base_vertex, glm::normalize(glm::vec3(x, radius, z)), {float(i) / segments, 0.f} });
+        vertices.push_back({ base_vertex, glm::normalize(glm::vec3(x, radius * radius / height, z)), {float(i) / segments, 0.f} });
         base_indices.push_back((uint32_t)vertices.size() - 1);
     }
 

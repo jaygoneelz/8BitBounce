@@ -27,7 +27,7 @@ The browser edition is an adaptation, not the native C++ executable compiled to 
 | Collision boxes | B |
 | Touch devices | Direction pad, Jump and camera buttons |
 
-Follow the numbered platforms. Gold platforms are moving side routes. Yellow pickups increase jump strength for five seconds; pink pickups recover 20 health. Every third platform activates a checkpoint. Falling off the island costs 25 health and returns you to the checkpoint. Enemies deal damage with a cooldown. Both the summit ring and the five-minute survival timer lead to victory.
+Follow the numbered platforms. Gold platforms are moving side routes. Yellow pickups increase jump strength for five seconds; pink pickups recover 20 health. Every third platform activates a checkpoint. Falling off the island costs 25 health and returns you to the checkpoint. Gold scouts detect farther away, red hunters move faster, and purple guards hit harder. Enemies periodically investigate hiding players and recover briefly after attacks. Alternate pickup types within eight seconds for a combo bonus. Both the summit ring and the five-minute survival timer lead to victory.
 
 ## Run the browser source locally
 
@@ -54,6 +54,8 @@ The engine is based on an existing MIT-licensed template. Its original copyright
 ## Project notes
 
 - [Architecture](docs/Architecture.md): original game structure, browser simulation and adaptation choices.
+- [Implementation](docs/Implementation.md): collision conventions, state diagrams, camera queries, rendering and startup fixes.
+- [Design review](docs/Design-review.md): strengths, limitations and next steps.
 - [Native setup](docs/Native-setup.md): dependency locations and build status.
 - [Testing](docs/Testing.md): automated and browser checks, including the full summit route.
 - [Credits and dependencies](docs/Credits.md): template attribution, vendored libraries and asset provenance.

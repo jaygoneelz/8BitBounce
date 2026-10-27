@@ -1,5 +1,7 @@
 #pragma once
 #include "application.h"
+#include <cstdlib>
+#include <crtdbg.h>
 
 #ifdef ENGINE_PLATFORM_WIN
 
@@ -11,8 +13,13 @@ void move_console();
 
 int main(int argc, char** argv)
 {
+    if (std::getenv("BOUNCE_SMOKE")) {
+        _CrtSetReportMode(_CRT_ASSERT, _CRTDBG_MODE_FILE);
+        _CrtSetReportFile(_CRT_ASSERT, _CRTDBG_FILE_STDERR);
+        _set_abort_behavior(0, _WRITE_ABORT_MSG | _CALL_REPORTFAULT);
+    }
 
-    move_console();
+    if (!std::getenv("BOUNCE_SMOKE")) move_console();
 
     engine::logger::init();
     LOG_CORE_WARN("Initialized logger");

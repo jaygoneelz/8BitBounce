@@ -99,7 +99,8 @@ void PowerUp::update(const engine::timestep& ts)
 
     m_light.Position = m_object->position();
 
-    float time_seconds = static_cast<float>(ts);
+    m_animation_time += float(ts);
+    float time_seconds = m_animation_time;
     float scale_factor = 1.0f + 0.2f * sin(time_seconds * 2.0f);
 
     for (size_t i = 0; i < m_glow_layers.size(); ++i) {

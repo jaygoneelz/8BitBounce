@@ -1,5 +1,6 @@
 #include "pch.h"
 #include "environment_generator.h"
+#include <gl/GL.h>
 
 EnvironmentGenerator::EnvironmentGenerator(float map_radius, float clearing_radius)
     : m_map_radius(map_radius), m_clearing_radius(clearing_radius), m_rng(std::random_device{}()) {
@@ -48,11 +49,15 @@ void EnvironmentGenerator::generate_trees() {
         props.position = glm::vec3(pos2D.x, 0.5f + y_offset(m_rng), pos2D.y);
         props.scale = glm::vec3(random_scale);
         glm::vec3 half_extents = model->size() * 0.5f;
-        props.bounding_shape = half_extents * props.scale;
+        // Bullet applies scale once; bounds remain in model space.
+        props.bounding_shape = half_extents;
         props.is_static = true;
         props.type = 0;
 
-        m_trees.push_back(engine::game_object::create(props));
+        auto object = engine::game_object::create(props);
+        object->set_offset(model->offset());
+        object->set_position({pos2D.x, 0.5f + half_extents.y * random_scale, pos2D.y});
+        m_trees.push_back(object);
     }
 }
 
@@ -78,7 +83,7 @@ void EnvironmentGenerator::generate_ruins() {
         std::string model_path = m_ruin_model_paths[model_picker(m_rng)];
         auto model = load_model(model_path);
 
-        float scale = scale_dist(m_rng);
+        float scale = scale_dist(m_rng) * 3.f / glm::max(model->size().x, glm::max(model->size().y, model->size().z));
 
         // Calculate bounding box extents
         glm::vec3 min_bound = glm::vec3(FLT_MAX);
@@ -98,10 +103,13 @@ void EnvironmentGenerator::generate_ruins() {
         props.textures = model->textures();
         props.position = glm::vec3(pos2D.x, 0.5f, pos2D.y);
         props.scale = glm::vec3(scale);
-        props.bounding_shape = half_extents * scale;
+        props.bounding_shape = half_extents;
         props.is_static = true;
 
-        m_ruins.push_back(engine::game_object::create(props));
+        auto object = engine::game_object::create(props);
+        object->set_offset((min_bound + max_bound) * 0.5f);
+        object->set_position({pos2D.x, 0.5f + half_extents.y * scale, pos2D.y});
+        m_ruins.push_back(object);
     }
 }
 
@@ -111,6 +119,7 @@ void EnvironmentGenerator::generate_spirits() {
     std::uniform_real_distribution<float> alpha_dist(0.4f, 0.7f);
     std::uniform_real_distribution<float> color_dist(0.6f, 1.0f);
 
+    auto spirit_texture = engine::texture_2d::create("assets/textures/bounce-checker.png", false);
     for (int i = 0; i < 100; ++i) {
         glm::vec2 pos2D;
         float dist;
@@ -133,6 +142,7 @@ void EnvironmentGenerator::generate_spirits() {
 
         engine::game_object_properties props;
         props.meshes = { mesh };
+        props.textures = { spirit_texture };
         props.position = position;
         props.scale = glm::vec3(scale);
         props.is_static = true;
@@ -175,10 +185,13 @@ void EnvironmentGenerator::render(const engine::ref<engine::shader>& shader) {
     for (auto& ruin : m_ruins)
         engine::renderer::submit(shader, ruin);
 
-    std::dynamic_pointer_cast<engine::gl_shader>(shader)->set_uniform("lighting_on", false);
+    auto gl_shader = std::dynamic_pointer_cast<engine::gl_shader>(shader);
+    gl_shader->set_uniform("u_opacity", .55f);
+    glEnable(GL_BLEND); glBlendFunc(GL_SRC_ALPHA,GL_ONE_MINUS_SRC_ALPHA); glDepthMask(GL_FALSE);
     for (auto& spirit : m_spirits) {
         spirit.material->submit(shader);
         engine::renderer::submit(shader, spirit.object);
     }
-    std::dynamic_pointer_cast<engine::gl_shader>(shader)->set_uniform("lighting_on", true);
+    gl_shader->set_uniform("u_opacity", 1.f);
+    glDepthMask(GL_TRUE); glDisable(GL_BLEND);
 }

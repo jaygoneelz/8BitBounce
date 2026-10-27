@@ -96,6 +96,7 @@ void engine::win_window::init(window_props const& props)
 	if (props.m_fullscreen)
 	{
 		int* count = new int;
+		if (std::getenv("BOUNCE_SMOKE")) glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 		m_window = glfwCreateWindow(
 			static_cast<int>(props.m_width),
 			static_cast<int>(props.m_height),
@@ -104,6 +105,7 @@ void engine::win_window::init(window_props const& props)
 	}
 	else
 	{
+		if (std::getenv("BOUNCE_SMOKE")) glfwWindowHint(GLFW_VISIBLE, GLFW_FALSE);
 		m_window = glfwCreateWindow(
 			static_cast<int>(props.m_width),
 			static_cast<int>(props.m_height),

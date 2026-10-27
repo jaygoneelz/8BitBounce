@@ -4,6 +4,7 @@
 #include "glm/gtc/type_ptr.hpp"
 
 #include <fstream>
+#include <stdexcept>
 
 static uint32_t shader_type_from_string(const std::string& type)
 {
@@ -158,8 +159,10 @@ std::unordered_map<uint32_t, std::string> engine::gl_shader::pre_process(const s
 
 void engine::gl_shader::compile(const std::unordered_map<uint32_t, std::string>& sources)
 {
+    if (sources.empty()) throw std::runtime_error("Shader has no stages: " + m_name);
     const uint32_t program = glCreateProgram();
-    std::vector<uint32_t> shader_ids(sources.size());
+    std::vector<uint32_t> shader_ids;
+    shader_ids.reserve(sources.size());
 
     for (auto&[type, source] : sources)
     {
@@ -179,7 +182,7 @@ void engine::gl_shader::compile(const std::unordered_map<uint32_t, std::string>&
             int32_t max_length = 0;
             glGetShaderiv(shader, GL_INFO_LOG_LENGTH, &max_length);
 
-            std::vector<char> info_log(max_length);
+            std::vector<char> info_log(std::max(1, max_length), '\0');
             glGetShaderInfoLog(shader, max_length, &max_length, &info_log[0]);
 
             glDeleteShader(shader);
@@ -207,7 +210,7 @@ void engine::gl_shader::compile(const std::unordered_map<uint32_t, std::string>&
         glGetProgramiv(program, GL_INFO_LOG_LENGTH, &max_length);
 
         // The maxLength includes the NULL character
-        std::vector<char> info_log(max_length);
+        std::vector<char> info_log(std::max(1, max_length), '\0');
         glGetProgramInfoLog(program, max_length, &max_length, &info_log[0]);
 
         // We don't need the program anymore.
@@ -221,8 +224,10 @@ void engine::gl_shader::compile(const std::unordered_map<uint32_t, std::string>&
         return;
     }
 
-    for (auto id : shader_ids)
+    for (auto id : shader_ids) {
         glDetachShader(program, id);
+        glDeleteShader(id);
+    }
 }
 
 std::string engine::gl_shader::extract_name(const std::string& file_path)

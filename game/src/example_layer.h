@@ -114,6 +114,8 @@ private:
 
 	engine::DirectionalLight							m_directionalLight;
 	engine::PointLight									m_light;
+    engine::PointLight m_goal_light;
+    bool m_run_started = false;
 
 	std::vector<engine::ref<engine::game_object>>		m_game_objects{};
 	EnvironmentGenerator								m_environment = EnvironmentGenerator(100.f, 35.f);

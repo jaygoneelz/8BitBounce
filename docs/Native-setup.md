@@ -31,6 +31,6 @@ The retained Premake script and older generator batch files are optional referen
 
 ## Verification status
 
-The native Debug/x64 solution built successfully on 27 October 2026 with the local dependencies and Visual Studio's installed v143 tools: **0 errors, 460 warnings**. The warnings include older dependency deprecations, numeric conversions and missing third-party debug symbols. This is a compilation/link check, not a claim that every runtime feature or configuration has been tested.
+The upgraded native Debug/x64 solution built successfully on 27 October 2026 with local dependencies and Visual Studio's installed v143 tools, with **zero errors**. Legacy dependency deprecations, conversions and missing debug-symbol warnings remain. The upgraded game also passed a hidden-window 120-frame gameplay/rendering check after a missing-shader startup fault was fixed. See [validation](Testing.md) for scope and repeatable steps. This does not establish that every runtime feature or configuration has been tested.
 
 A source-only fresh clone was not verified without restoring these dependencies. Release and Dist configurations have different library paths/names and have not been validated. The browser game is independently runnable and does not depend on any native SDK.

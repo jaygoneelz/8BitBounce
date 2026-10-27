@@ -2,11 +2,11 @@
 #include <engine.h>
 
 enum class EnemyState {
-    Idle,
     Patrol,
+    Investigate,
     Chase,
     Attack,
-    Dead
+    Recover
 };
 
 class Player; // forward declaration
@@ -16,13 +16,14 @@ public:
     Enemy(const glm::vec3& spawn_position, float patrol_radius);
 
     void update(const engine::timestep& ts, const glm::vec3& player_position, engine::ref<Player>);
+    void reset();
     void render(const engine::ref<engine::shader>& shader);
 
     engine::ref<engine::game_object> object() const { return m_object; }
 
 private:
     void update_state(const engine::timestep& ts, const glm::vec3& player_position, engine::ref<Player>);
-    void move_toward(const glm::vec3& target, float speed);
+    void move_toward(const glm::vec3& target, float speed, float dt);
     void pick_new_patrol_point();
     void change_state(EnemyState new_state);
     void attack_player(engine::ref<Player> player);
@@ -31,7 +32,10 @@ private:
     engine::ref<engine::game_object> m_object;
     engine::ref<engine::material> m_material;
 
-    EnemyState m_state = EnemyState::Idle;
+    EnemyState m_state = EnemyState::Patrol;
+    float m_alert_timer = 0.f;
+    float m_speed = 2.5f;
+    int m_archetype = 0;
 
     glm::vec3 m_spawn_position;
     glm::vec3 m_patrol_target;

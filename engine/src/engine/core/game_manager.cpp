@@ -14,6 +14,7 @@ GameManager::GameManager()
 void GameManager::update(engine::timestep time_step) {
     if (m_game_state == GameState::Playing) {
         m_survival_timer += (float)time_step.seconds();
+        m_combo_timer = glm::max(0.f, m_combo_timer - float(time_step));
         m_score.survival_time = m_survival_timer;
 
         if (m_player && m_player->health() <= 0) {
@@ -52,8 +53,10 @@ void GameManager::on_event(engine::event& e) {
 void GameManager::init_gameplay() {
     m_survival_timer = 0.0f;
     m_collected_powerups.clear();
+    m_combo_timer = 0.f; m_won = false;
     m_score = ScoreBreakdown();
     m_game_state = GameState::Playing;
+    if (m_player) m_player->reset();
 }
 
 void GameManager::cleanup_gameplay() {
@@ -69,7 +72,8 @@ void GameManager::start_game() {
     init_gameplay();
 }
 
-void GameManager::trigger_game_over() {
+void GameManager::trigger_game_over(bool won) {
+    m_won = won;
     update_score();
     m_game_state = GameState::GameOver;
 }
@@ -93,6 +97,9 @@ float GameManager::survival_time() const {
 void GameManager::increment_powerup(PowerUpType type) {
     m_collected_powerups.push_back(type);
     m_score.powerups_collected++;
+    if (m_combo_timer > 0.f && m_collected_powerups.size() > 1 &&
+        m_collected_powerups[m_collected_powerups.size()-2] != type) m_score.combo_streak++;
+    m_combo_timer = 8.f;
 }
 
 void GameManager::update_score() {
@@ -152,6 +159,18 @@ void GameManager::render_game() {
     if (current_health < (max_health * 20) / 100)
         health_color = glm::vec4(1.f, 0.f, 0.f, 1.f);
 
+    GLfloat clear_color[4];
+    glGetFloatv(GL_COLOR_CLEAR_VALUE, clear_color);
+    glEnable(GL_SCISSOR_TEST);
+    auto bar = [&](int x, int y, int w, float fraction, glm::vec3 color) {
+        glScissor(x, y, w, 10); glClearColor(.08f,.1f,.13f,1.f); glClear(GL_COLOR_BUFFER_BIT);
+        glScissor(x, y, int(w * glm::clamp(fraction,0.f,1.f)), 10);
+        glClearColor(color.r,color.g,color.b,1.f); glClear(GL_COLOR_BUFFER_BIT);
+    };
+    bar(int(width*.02f),int(height*.90f),int(width*.24f),float(current_health)/max_health,glm::vec3(health_color));
+    bar(int(width*.70f),int(height*.90f),int(width*.24f),m_survival_timer/300.f,{.4f,.7f,1.f});
+    glDisable(GL_SCISSOR_TEST);
+    glClearColor(clear_color[0],clear_color[1],clear_color[2],clear_color[3]);
     std::stringstream health_text;
     health_text << "Health: " << current_health << "/" << max_health;
     m_text_manager->render_text(shader, health_text.str(), width * 0.02f, height * 0.95f, 0.75f, health_color);
@@ -179,7 +198,7 @@ void GameManager::render_game_over() {
     glClearColor(0.05f, 0.05f, 0.1f, 1.f);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    m_text_manager->render_text(shader, "Game Over", width * 0.3f, height * 0.6f, 1.2f, glm::vec4(1.f));
+    m_text_manager->render_text(shader, m_won ? "Challenge complete" : "Run ended", width * 0.3f, height * 0.6f, 1.2f, glm::vec4(1.f));
 
     std::stringstream score_text;
     score_text << "Final Score: " << m_score.final_score;
@@ -191,6 +210,6 @@ void GameManager::render_game_over() {
     detail_text << "Survival: " << minutes << "m"<< seconds << "s  Powerups: " << m_score.powerups_collected << "  Combos: " << m_score.combo_streak;
     m_text_manager->render_text(shader, detail_text.str(), width * 0.3f, height * 0.45f, 0.8f, glm::vec4(0.8f));
 
-    //m_text_manager->render_text(shader, "Press R to Restart", width * 0.3f, height * 0.3f, 0.8f, glm::vec4(0.6f));
+    m_text_manager->render_text(shader, "Press R to Restart", width * 0.3f, height * 0.3f, 0.8f, glm::vec4(0.6f));
     m_text_manager->render_text(shader, "Press ESC to Exit", width * 0.3f, height * 0.35f, 0.8f, glm::vec4(0.6f));
 }

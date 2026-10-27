@@ -4,7 +4,7 @@
 
 `game/src/game.cpp` creates the application and `example_layer` owns the scene. The layer initializes rendering, lighting, audio, a third-person camera, the player, a generated spiral map, pickups and twenty enemies. The engine's Bullet manager advances the physics world and synchronizes game objects. Rendering uses custom OpenGL shaders and retained model/texture loaders.
 
-`MapGenerator::generate_spiral_map` creates twelve platforms around radius eight with 45-degree angular increments and 1.5-unit height steps. Every third layer adds a horizontal mover, and every fourth adds a vertical mover. `MovingPlatform` interpolates between endpoints. `Player` handles camera-relative input, jumping, health and timed jump multipliers. `Enemy` selects Patrol, Chase and Attack behaviour from distance and cooldowns. `GameManager` manages intro/play/results screens and calculates survival/pickup scores.
+`MapGenerator::generate_spiral_map` creates twelve platforms around radius eight with 45-degree angular increments and 1.5-unit height steps. Every third layer adds a horizontal mover, and every fourth adds a vertical mover. `MovingPlatform` interpolates between endpoints. `Player` handles camera-relative input, jumping, health and timed jump multipliers. `Enemy` runs Patrol, Investigate, Chase, Attack and Recover states, with scout, hunter and guard roles. `GameManager` manages intro/play/results screens and calculates survival/pickup scores.
 
 These systems extend an existing engine template. The template license and dependency copyright notices are retained; this repository does not claim the underlying third-party engine and libraries were written from scratch.
 
@@ -34,16 +34,16 @@ Movement is relative to the current orbit camera. Dragging, Q/E or touch buttons
 
 Every third numbered platform becomes a respawn checkpoint. A fall costs 25 health and resets position/velocity to that checkpoint. Each new run recreates platforms, enemies, pickups, health and timers, avoiding partially reset sessions. Enemy damage uses both an attack interval and a player damage cooldown.
 
-Patrol enemies choose nearby targets. Within horizontal and vertical detection range they chase; at close range they attack. Enemies on the ground do not attack players far above them. A fixed seed makes the initial world reproducible.
+Patrol enemies choose nearby targets. Scouts detect targets at 14 units; other roles at nine. Hunters chase at 3.6 units/second and other roles at 2.5. Guards deal 15 damage instead of ten. Attacks lead to a 0.65-second recovery window. Every twelve seconds a patrolling enemy investigates the player’s current horizontal location for up to eight seconds. Chase persists beyond the initial detection range on the ground. Ground enemies cannot damage players high above them. A fixed seed makes the initial browser world reproducible.
 
 ### Goals and records
 
-Reaching the summit ring or surviving the configured five-minute target ends in victory; depleted health ends in defeat. The browser score is ten points per whole second survived, fifty per pickup, one hundred per highest completed platform index and a five-hundred-point victory bonus.
+Reaching the summit ring or surviving the configured five-minute target ends in victory; depleted health ends in defeat. The browser score is ten points per whole second survived, fifty per pickup, one hundred per alternating pickup combo collected within eight seconds, one hundred per highest completed platform index and a five-hundred-point victory bonus.
 
 Results can be saved to a named top-ten table in browser-local storage. Entries are normalized and invalid data is rejected before rendering. Names are inserted with DOM text operations. There is no network leaderboard, account or collection of player data by a server.
 
 ### Rendering and sound
 
-The browser's platform meshes, blue marble, red enemies, pine scenery, route guides, labels and portal are generated in code. Shadows, fog and restrained lighting support spatial readability. Three.js handles WebGL rendering; obsolete scene meshes, materials and textures are disposed on restart. Sound effects are short Web Audio oscillator tones triggered after a user gesture, without downloaded recordings or an FMOD runtime.
+The browser's platform meshes, blue marble, red enemies, pine scenery, route guides, labels and portal are generated in code. Shadows, fog and restrained lighting support spatial readability. Three.js handles WebGL rendering; obsolete scene meshes, materials and textures are disposed on restart. Sound effects and an eight-note background pattern use Web Audio oscillator tones triggered after a user gesture, without downloaded recordings or an FMOD runtime.
 
 The browser uses procedural visuals rather than distributing the native model packs, skybox, music or Arial font. It requires a modern browser with WebGL 2; other devices may have different GPU and input behaviour.

@@ -18,7 +18,7 @@ test('falling costs 25 health and returns to the current checkpoint',()=>{const 
 test('landing on the third checkpoint updates highest platform and respawn position',()=>{const g=new Game(quiet());g.pickups=[];const p=g.platforms.find(p=>p.index===3);Object.assign(g.player,{x:p.x,z:p.z,y:p.y+.7,vy:-1,grounded:null});for(let i=0;i<10;i++)g.update(STEP);assert.equal(g.highest,3);assert.equal(g.checkpoint.index,3);});
 test('summit ring produces victory and stops the timer',()=>{const g=new Game(quiet()),p=g.platforms.find(p=>p.index===11);g.pickups=[];Object.assign(g.player,{x:p.x,z:p.z,y:p.y+.65,vy:0,grounded:p.id});g.update(STEP);assert.equal(g.state,'victory');const elapsed=g.elapsed;g.update(STEP);assert.equal(g.elapsed,elapsed);});
 test('survival timer also wins without requiring the summit',()=>{const g=new Game({...quiet(),survivalSeconds:5});g.pickups=[];for(let i=0;i<310;i++)g.update(STEP);assert.equal(g.state,'victory');assert.ok(g.elapsed<5.1);});
-test('enemies patrol, chase and attack based on range and elevation',()=>{const g=new Game(quiet());g.pickups=[];g.enemies=[{x:8,y:.6,z:7,originX:8,originZ:7,targetX:10,targetZ:7,state:'patrol',timer:0,cooldown:0}];g.update(STEP);assert.equal(g.enemies[0].state,'chase');g.enemies[0].x=g.player.x;g.enemies[0].z=g.player.z;g.update(STEP);assert.equal(g.enemies[0].state,'attack');assert.equal(g.player.health,90);g.player.y=10;g.update(STEP);assert.equal(g.enemies[0].state,'patrol');});
+test('enemies chase, attack, recover, then investigate an elevated target',()=>{const g=new Game(quiet());g.pickups=[];g.enemies=[{x:8,y:.6,z:7,originX:8,originZ:7,targetX:10,targetZ:7,state:'patrol',timer:0,cooldown:0}];g.update(STEP);assert.equal(g.enemies[0].state,'chase');g.enemies[0].x=g.player.x;g.enemies[0].z=g.player.z;g.update(STEP);assert.equal(g.enemies[0].state,'recover');assert.equal(g.player.health,90);g.player.y=10;for(let i=0;i<45;i++)g.updateEnemies(STEP);assert.equal(g.enemies[0].state,'investigate');});
 test('new run resets pickups, health, timer and checkpoints',()=>{const a=new Game(config);a.highest=8;a.player.health=10;a.pickups[0].alive=false;const b=new Game(config);assert.equal(b.player.health,100);assert.equal(b.elapsed,0);assert.equal(b.highest,0);assert.equal(b.pickups[0].alive,true);assert.equal(b.enemies.length,20);});
 test('local records sanitize names, order top ten and reject invalid data',()=>{let entries=[];for(let i=0;i<15;i++){const g=new Game(quiet());g.elapsed=i;entries=recordRun(entries,'P'+i,g);}assert.equal(entries.length,10);assert.equal(entries[0].score,140);assert.equal(recordRun([],'<script>',new Game(quiet()))[0].name,'SCRIPT');assert.deepEqual(normalizeRecords(null),[]);assert.deepEqual(normalizeRecords([{name:'X',score:-1}]),[]);});
 test('every spiral platform is reachable by ordinary unboosted jumps',()=>{const g=new Game(quiet());g.pickups=[];
@@ -33,4 +33,37 @@ test('every spiral platform is reachable by ordinary unboosted jumps',()=>{const
  const summit=g.platforms.find(p=>p.index===config.layers-1);
  for(let t=0;t<120&&g.state==='playing';t++){const dx=summit.x-g.player.x,dz=summit.z-g.player.z,l=Math.hypot(dx,dz);g.update(STEP,{x:dx/l,z:dz/l});}
  assert.equal(g.state,'victory');
+});
+
+const enemy=(kind='hunter')=>({x:0,y:.6,z:0,originX:0,originZ:0,targetX:2,targetZ:0,state:'patrol',timer:0,cooldown:0,alert:0,kind});
+test('all three enemy roles spawn and ground-level corner hiding attracts pursuit',()=>{
+ const g=new Game(config);assert.deepEqual(new Set(g.enemies.map(e=>e.kind)),new Set(['scout','hunter','guard']));
+ g.enemies=[enemy()];Object.assign(g.player,{x:44,y:.5,z:44});
+ for(let i=0;i<100*60;i++)g.updateEnemies(STEP);
+ assert.ok(g.player.health<100,'stationary corner player must be found and damaged');
+});
+test('hunters close distance faster than guards and scouts detect farther away',()=>{
+ const hunter=new Game(quiet()),guard=new Game(quiet()),scout=new Game(quiet());
+ for(const [g,kind]of [[hunter,'hunter'],[guard,'guard'],[scout,'scout']]){Object.assign(g.player,{x:0,y:.5,z:12});g.enemies=[enemy(kind)];g.updateEnemies(STEP);}
+ assert.equal(scout.enemies[0].state,'chase');assert.equal(guard.enemies[0].state,'patrol');
+ hunter.enemies[0].state=guard.enemies[0].state='chase';
+ for(let i=0;i<60;i++){hunter.updateEnemies(STEP);guard.updateEnemies(STEP);}
+ assert.ok(hunter.enemies[0].z>guard.enemies[0].z);
+});
+test('enemy travel is stable across simulation frequencies',()=>{
+ const positions=[];for(const hz of [30,60,120]){const g=new Game(quiet());Object.assign(g.player,{x:0,y:.5,z:30});g.enemies=[{...enemy(),state:'chase'}];for(let i=0;i<hz;i++)g.updateEnemies(1/hz);positions.push(g.enemies[0].z);}
+ assert.ok(Math.max(...positions)-Math.min(...positions)<.001);
+});
+test('attack recovery cannot be cancelled by nearby players or deal damage every frame',()=>{
+ const g=new Game(quiet());Object.assign(g.player,{x:0,y:.5,z:0});g.enemies=[enemy('guard')];g.updateEnemies(STEP);assert.equal(g.player.health,85);
+ for(let i=0;i<30;i++)g.updateEnemies(STEP);assert.equal(g.player.health,85);assert.equal(g.enemies[0].state,'recover');
+});
+test('ground enemies never damage a player on an elevated platform',()=>{
+ const g=new Game(quiet());Object.assign(g.player,{x:0,y:8,z:0});g.enemies=[enemy('guard')];for(let i=0;i<30*60;i++)g.updateEnemies(STEP);assert.equal(g.player.health,100);
+});
+test('alternating pickups award a timed combo while expired chains do not',()=>{
+ const g=new Game(quiet());g.pickups=[];
+ const collect=kind=>{g.pickups=[{x:g.player.x,y:g.player.y,z:g.player.z,kind,alive:true}];g.update(STEP);};
+ collect('heal');collect('boost');assert.equal(g.combo,1);assert.ok(g.events.includes('combo'));assert.equal(g.score,200);
+ collect('boost');assert.equal(g.combo,1);g.comboTimer=0;collect('heal');assert.equal(g.combo,1);
 });
