@@ -1,0 +1,39 @@
+# Local IDE state and generated builds
+.vs/
+.idea/
+bin/
+inter/
+obj/
+build/
+*.user
+*.pdb
+*.obj
+!game/assets/models/**/*.obj
+*.ilk
+*.ipch
+*.tlog
+*.log
+*.lastbuildstate
+*.VC.db
+*.VC.opendb
+# Developer SDKs and precompiled dependency binaries
+engine/external/FMOD/
+*.lib
+*.dll
+*.exe
+# Locally installed font; do not redistribute the Arial font binary
+game/assets/fonts/arial.ttf
+# Private documents and local data
+private/
+*.docx
+*.pdf
+*.xls
+*.xlsx
+*.zip
+node_modules/
+smoke-output/
+highscores.json
+*.bak
+*.tmp
+.DS_Store
+Thumbs.db
