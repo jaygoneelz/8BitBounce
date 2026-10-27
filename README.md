@@ -2,9 +2,11 @@
 
 A personal 3D platformer by Jaygovindhan Neelanarayanan. Climb a spiral of floating platforms, ride moving platforms, avoid cube enemies and collect healing or high-bounce pickups. Reach the summit or survive five minutes.
 
-**[Play the browser edition](https://jaygoneelz.github.io/games/8bit-bounce/)** · [Portfolio](https://jaygoneelz.github.io/)
+**[Play the interactive browser demo](https://jaygoneelz.github.io/games/8bit-bounce/)** · [Portfolio](https://jaygoneelz.github.io/)
 
 ![Browser gameplay](docs/screenshots/browser-gameplay.jpg)
+
+The browser demo is a simplified recreation of the gameplay. The original C++/OpenGL game has different graphics, assets and physics.
 
 ## Two editions
 
